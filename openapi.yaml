@@ -1,0 +1,210 @@
+openapi: 3.0.3
+info:
+  title: Inventory Manager
+  description: |-
+    Inventory Manager by Carlos Gregório
+  contact:
+    email: carlos.m.mgregorio@gmail.com
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api
+tags:
+  - name: Inventory
+    description: Manage your inventory
+paths:
+  /items:
+  
+    get:
+      tags:
+        - Inventory
+      summary: Get all items from the inventory
+      description: Get all items from the inventory
+      operationId: getAllItems
+      responses:
+        '200':
+          description: Items from the inventory
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+                
+  /item:
+  
+    post:
+      tags:
+        - Inventory
+      summary: Add a new item to the inventory
+      description: Add a new item to the inventory
+      operationId: addItem
+      requestBody:
+        description: Add a new item to the inventory
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Item'
+        required: true
+      responses:
+        '201':
+          description: Item created with success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'          
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidInputResponse'
+        
+  /item/{itemId}:
+  
+    get:
+      tags:
+        - Inventory
+      summary: Find an item by ID
+      description: Returns an item
+      operationId: getItemById
+      parameters:
+        - name: itemId
+          in: path
+          description: ID of the item to return
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'          
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidInputResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+                
+    put:
+      tags:
+        - Inventory
+      summary: Update an item on the inventory
+      description: Updates an item on the inventory by Id
+      operationId: updateItem
+      parameters:
+        - name: itemId
+          in: path
+          description: ID of the item to update
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        description: Update an item on the inventory
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Item'
+        required: true
+      responses:
+        '200':
+          description: Item updated with success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidInputResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+          
+    delete:
+      tags:
+        - Inventory
+      summary: Deletes an item
+      description: Deletes an item
+      operationId: deleteItem
+      parameters:
+        - name: itemId
+          in: path
+          description: Item id to delete
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvalidInputResponse'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+
+components:
+  schemas:
+    Item:
+      required:
+        - name
+        - quantity
+        - value
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1234
+        name:
+          type: string
+          example: hammer
+        quantity:
+          type: integer
+          format: int64
+          example: 12
+        value:
+          type: number
+          format: double64
+          example: 12.45
+    NotFoundResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: item not found
+    InvalidInputResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: invalid input
+  requestBodies:
+    Item:
+      description: Item object that needs to be added to the inventory
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Item'
+
