@@ -1,26 +1,41 @@
 package com.exercise.inventorymanager.item;
 
+import com.exercise.inventorymanager.item.controller.ErrorMessage;
 import com.exercise.inventorymanager.item.model.Item;
+import com.exercise.inventorymanager.item.repository.ItemRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.mongodb.client.MongoClient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+import java.util.Optional;
+
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
 @AutoConfigureMockMvc
+@SpringBootTest
 public class ItemIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private MongoClient mongoClient;
+
+    @MockBean
+    private ItemRepository itemRepository;
 
     @Test
     public void getShouldReturnAnEmptyListWhenNoDataFound() throws Exception {
@@ -29,81 +44,62 @@ public class ItemIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("[]")
-        );
-    }
-
-    @Test
-    public void getShouldReturnAListWithItemsWhenDataIsFound() throws Exception {
-        this.mockMvc.perform(get("/item"))
-                .andDo(print())
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("[\n" +
-                        "  {\n" +
-                        "    \"id\": 1234,\n" +
-                        "    \"name\": \"hammer\",\n" +
-                        "    \"quantity\": 12,\n" +
-                        "    \"value\": 12.45\n" +
-                        "  }\n" +
-                        "]")
                 );
     }
 
     @Test
-    public void postShouldReturnBadRequestWhenInputIsInsufficient() throws Exception {
-        Item item = new Item();
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectWriter objectWriter = objectMapper.writer().withDefaultPrettyPrinter();
-        String requestJson = objectWriter.writeValueAsString(item );
+    public void getShouldReturnAListWithItemsWhenDataIsFound() throws Exception {
+        when(itemRepository.findAll()).thenReturn(List.of(createItem()));
 
-        this.mockMvc.perform(post("/item").content(requestJson))
+        this.mockMvc.perform(get("/item"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(mapToJson(List.of(createItem()))));
+    }
+
+    @Test
+    public void postShouldReturnBadRequestWhenInputIsInsufficient() throws Exception {
+        Item invalidItem = new Item();
+
+        this.mockMvc.perform(
+                        post("/item")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapToJson(invalidItem))
+                )
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("invalid input")
+                .andExpect(content().json(createErrorMessageJson("invalid input"))
                 );
     }
 
     @Test
     public void postShouldReturnCreatedWhenInputIsValid() throws Exception {
-        Item item = new Item();
-        item.setId(1234);
-        item.setName("hammer");
-        item.setQuantity(12);
-        item.setValue(12.45);
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectWriter objectWriter = objectMapper.writer().withDefaultPrettyPrinter();
-        String requestJson = objectWriter.writeValueAsString(item );
+        Item newItem = createItem();
+        when(itemRepository.save(newItem)).thenReturn(newItem);
 
-        this.mockMvc.perform(post("/item").content(requestJson))
+        this.mockMvc.perform(
+                        post("/item")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapToJson(newItem))
+                )
                 .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("[\n" +
-                        "  {\n" +
-                        "    \"id\": 1234,\n" +
-                        "    \"name\": \"hammer\",\n" +
-                        "    \"quantity\": 12,\n" +
-                        "    \"value\": 12.45\n" +
-                        "  }\n" +
-                        "]")
-                );
+                .andExpect(content().json(mapToJson(newItem)));
     }
 
     @Test
     public void getShouldReturnItemWhenIDExists() throws Exception {
-        this.mockMvc.perform(get("/item/1234"))
+        Item existent = createItem();
+        when(itemRepository.findById(1234)).thenReturn(Optional.of(existent));
+
+        this.mockMvc.perform(get("/item/" + existent.getId()))
                 .andDo(print())
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("[\n" +
-                        "  {\n" +
-                        "    \"id\": 1234,\n" +
-                        "    \"name\": \"hammer\",\n" +
-                        "    \"quantity\": 12,\n" +
-                        "    \"value\": 12.45\n" +
-                        "  }\n" +
-                        "]")
+                .andExpect(content().json(mapToJson(existent))
                 );
     }
 
@@ -113,7 +109,7 @@ public class ItemIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("invalid input")
+                .andExpect(content().json(createErrorMessageJson("invalid input"))
                 );
     }
 
@@ -123,34 +119,27 @@ public class ItemIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("item not found")
+                .andExpect(content().json(createErrorMessageJson("item not found"))
                 );
     }
 
     @Test
     public void putShouldReturnOkWhenInputIsValid() throws Exception {
-        Item item = new Item();
-        item.setId(1234);
-        item.setName("hammer");
-        item.setQuantity(25);
-        item.setValue(23.68);
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectWriter objectWriter = objectMapper.writer().withDefaultPrettyPrinter();
-        String requestJson = objectWriter.writeValueAsString(item );
+        Item existent = createItem();
+        Item toUpdate = createUpdatedItem();
 
-        this.mockMvc.perform(put("/item/1234").content(requestJson))
+        when(itemRepository.findById(existent.getId())).thenReturn(Optional.of(existent));
+        when(itemRepository.save(toUpdate)).thenReturn(toUpdate);
+
+        this.mockMvc.perform(
+                        put("/item/" + toUpdate.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapToJson(toUpdate))
+                )
                 .andDo(print())
-                .andExpect(status().isCreated())
+                .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("[\n" +
-                        "  {\n" +
-                        "    \"id\": 1234,\n" +
-                        "    \"name\": \"hammer\",\n" +
-                        "    \"quantity\": 25,\n" +
-                        "    \"value\": 23.68\n" +
-                        "  }\n" +
-                        "]")
-                );
+                .andExpect(content().json(mapToJson(toUpdate)));
     }
 
     @Test
@@ -159,17 +148,23 @@ public class ItemIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("invalid input")
+                .andExpect(content().json(createErrorMessageJson("invalid input"))
                 );
     }
 
     @Test
     public void putShouldReturnNotFoundWhenItemNotFound() throws Exception {
-        this.mockMvc.perform(put("/item/1111"))
+        Item updated = createUpdatedItem();
+
+        this.mockMvc.perform(
+                        put("/item/" + updated.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapToJson(updated))
+                )
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("item not found")
+                .andExpect(content().json(createErrorMessageJson("item not found"))
                 );
     }
 
@@ -179,7 +174,7 @@ public class ItemIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("invalid input")
+                .andExpect(content().json(createErrorMessageJson("invalid input"))
                 );
     }
 
@@ -189,14 +184,36 @@ public class ItemIntegrationTest {
                 .andDo(print())
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("item not found")
+                .andExpect(content().json(createErrorMessageJson("item not found"))
                 );
     }
 
     @Test
-    public void deletetShouldReturnNotFoundWhenOkWhenInputIsValid() throws Exception {
-        this.mockMvc.perform(delete("/item/1234"))
+    public void deleteShouldReturnNotFoundWhenOkWhenInputIsValid() throws Exception {
+        Item existent = createItem();
+        when(itemRepository.findById(existent.getId())).thenReturn(Optional.of(existent));
+
+        this.mockMvc.perform(delete("/item/" + existent.getId()))
                 .andDo(print())
                 .andExpect(status().isOk());
+    }
+
+    private Item createItem() {
+        return new Item(1234, "hammer", 12, 12.45);
+    }
+
+    private Item createUpdatedItem() {
+        return new Item(1234, "hammer", 25, 23.68);
+    }
+
+    private String mapToJson(Object object) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectWriter objectWriter = objectMapper.writer().withDefaultPrettyPrinter();
+        return objectWriter.writeValueAsString(object);
+    }
+
+    private String createErrorMessageJson(String message) throws JsonProcessingException {
+        ErrorMessage errorMessage = new ErrorMessage(message);
+        return mapToJson(errorMessage);
     }
 }
