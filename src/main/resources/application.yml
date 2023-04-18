@@ -1,7 +1,10 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
 spring:
   data:
     mongodb:
       database: inventory
-      host: localhost
-      port: 27017
-      auto-index-creation: true
+      uri: mongodb://localhost:27017
