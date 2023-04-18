@@ -7,13 +7,12 @@ info:
     email: carlos.m.mgregorio@gmail.com
   version: 1.0.0
 servers:
-  - url: http://localhost:8080/api
+  - url: https://inventory-manager-app.azurewebsites.net/api
 tags:
   - name: Inventory
     description: Manage your inventory
 paths:
-  /items:
-  
+  /item:
     get:
       tags:
         - Inventory
@@ -29,9 +28,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Item'
-                
-  /item:
-  
+
     post:
       tags:
         - Inventory
@@ -60,7 +57,6 @@ paths:
                 $ref: '#/components/schemas/InvalidInputResponse'
         
   /item/{itemId}:
-  
     get:
       tags:
         - Inventory
