@@ -1,0 +1,17 @@
+version: '3.4'
+services:
+  back:
+    image: inventory-manager-back
+    build:
+      dockerfile: ./Dockerfile
+    links:
+      - mongo
+    ports:
+      - 8080:8080
+    environment:
+      - SPRING_DATA_MONGODB_HOST=mongo
+  mongo:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+
