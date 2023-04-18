@@ -6,6 +6,7 @@ COPY pom.xml .
 RUN mvn dependency:resolve-plugins dependency:go-offline -B -T 1C
 
 COPY src/ src/
+COPY openapi.yaml src/main/resources/static
 RUN mvn install -B -T 1C
 
 FROM eclipse-temurin:17-jdk-alpine as jdk17-jre-base
@@ -28,5 +29,7 @@ COPY --from=jdk17-jre-base /opt/jvm_small /opt/jvm_small
 
 RUN mkdir /opt/inventory-manager/
 COPY --from="mvnbuild" /opt/workspace/target/inventory-manager.jar /opt/inventory-manager/
+
+EXPOSE 8080
 
 CMD ["java","-Djava.awt.headless=true","-jar","/opt/inventory-manager/inventory-manager.jar"]
