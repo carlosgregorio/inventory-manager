@@ -6,7 +6,6 @@ COPY pom.xml .
 RUN mvn dependency:resolve-plugins dependency:go-offline -B -T 1C
 
 COPY src/ src/
-COPY openapi.yaml src/main/resources/static
 RUN mvn install -B -T 1C
 
 FROM eclipse-temurin:17-jdk-alpine as jdk17-jre-base
